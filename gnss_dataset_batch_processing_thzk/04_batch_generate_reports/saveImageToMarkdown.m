@@ -30,7 +30,7 @@ function saveImageToMarkdown(figHandle, imageSavePath, markdownPath, keyword)
     % 解析路径获取上两级目录名
     % 解析路径获取上两级目录名
     [parentDir, ~] = fileparts(saveDir); % 上级目录名
-    %[grandParentDir, ~] = fileparts(parentDir); % 上两级目录名
+    [parentDir, ~] = fileparts(parentDir); % 上两级目录名
     [~, GGPFolderName] = fileparts(parentDir); % 上两级目录名
 
     % 创建图注内容
