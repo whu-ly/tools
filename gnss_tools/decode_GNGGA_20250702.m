@@ -1,124 +1,140 @@
 %% 解码 "GNGGA" 语句
-% 2025-07-02，edit by Lying
+% 2025-07-02, Implement single file processing, edit by Lying
+% 2025-07-06, Implement batch processing of folders, edit by Lying
 
 clear;clc;
 
 % 参数配置
-year=2025;month=05;day=20; % 数据时间（年月日），必须进行赋值
-InputFileName  ='E:\01Prog\04CDTH\02Data\01TestSet\@TH1100@BSDVRS@UGV@OneWall\res\POSRTKDLLV337Tmp10_ROVE_20241127_02_TH1100_01\POSRTK.pos';
+year = 2025; month = 05; day = 20;
+InputFileName = 'E:\01Prog\04CDTH\02Data\202410@CDTH@CropperGNSS@TH1100\20241202@TH1100@BSDVRS@UGV@Trees\res\POSRTKDLLV342_TH1100';  % 可是文件也可以是文件夹
 
-% 自动生成输出文件路径
-[filepath, name, ~] = fileparts(InputFileName);
-OutputFileName = fullfile(filepath, [name, '.txt']);
-
-% 打开文件
-fid_input = fopen(InputFileName, 'rt');
-if fid_input == -1
-    error('无法打开输入文件: %s', InputFileName);
-end
-
-fid_output = fopen(OutputFileName, 'w');
-if fid_output == -1
-    fclose(fid_input); % 先关闭已打开的输入文件
-    error('无法打开输出文件: %s', OutputFileName);
-end
-
-% 1.读取NMEA格式中GGA字段信息并进行转换和储存
-i=1;
-GPSweek=[];SecOfWeek=[];
-B=[];L=[];H=[];
-X=[];Y=[];Z=[];
-status=[];GPSnum=[];HDOP=[];
-while ~feof(fid_input)
-    line = fgetl(fid_input);
-    answer = findstr(line,'GNGGA');
-    if (~isempty(answer)&&~isempty(line)&&(length(line)>36))
-       [~,line]=strtok(line,',');
-
-       [strtempt,line]=strtok(line,',');%时间
-       hour=str2double(strtempt(1:2));min=str2double(strtempt(3:4));sec=str2double(strtempt(5:9));
-       [GPST.week, GPST.SecOfWeek] = YMDHMS2GPST_inMain(year,month,day,hour,min,sec);
-       GPSweek=[GPSweek;GPST.week]; SecOfWeek=[SecOfWeek;GPST.SecOfWeek+18];
-
-       [strtempt,line]=strtok(line,',');%纬度
-       if size(strtempt)<=1
-           GPSweek(size(GPSweek,1))=[];
-           SecOfWeek(size(SecOfWeek,1))=[];
-           continue
-       end
-       if 0
-           Bdd=str2double(strtempt(1:3));
-           Bmm=str2double(strtempt(4:end));
-       else
-           Bdd=str2double(strtempt(1:2));
-           Bmm=str2double(strtempt(3:end));%和芯，ublox
-       end
-       B=[B;Bdd+Bmm/60.0];
-       [~,line]=strtok(line,',');
-
-       [strtempt,line]=strtok(line,',');%经度
-       Ldd=str2double(strtempt(1:3));Lmm=str2double(strtempt(4:end));
-       L=[L;Ldd+Lmm/60.0];
-       [~,line]=strtok(line,',');
-
-       [strtempt,line]=strtok(line,',');%解状态
-       status=[status;str2double(strtempt)];
-
-       [strtempt,line]=strtok(line,',');%GPS卫星数
-       GPSnum=[GPSnum;str2double(strtempt)];
-
-       [strtempt,line]=strtok(line,',');%HDOP
-       HDOP=[HDOP;str2double(strtempt)];
-
-       [strtempt,line]=strtok(line,',');%海拔高
-       altitude=str2double(strtempt);
-       [~,line]=strtok(line,',');
-       [strtempt,line]=strtok(line,',');%椭球高
-       H=[H;altitude+str2double(strtempt)];
-
-       [XYZ] = LLH2XYZ_inMain(B(i)*pi/180.0,L(i)*pi/180.0,H(i));%XYZ
-       X=[X;XYZ(1)];
-       Y=[Y;XYZ(2)];
-       Z=[Z;XYZ(3)];
-       i=i+1;
+if isfolder(InputFileName)
+    fileList = dir(fullfile(InputFileName, '*'));
+    fileList = fileList(~[fileList.isdir]);  % 去掉文件夹
+    for k = 1:length(fileList)
+        fullPath = fullfile(InputFileName, fileList(k).name);
+        fprintf('处理文件：%s\n', fullPath);
+        try
+            processSingleFile(fullPath, year, month, day);
+        catch ME
+            warning('处理文件失败: %s\n原因: %s', fullPath, ME.message);
+        end
     end
+else
+    processSingleFile(InputFileName, year, month, day);
 end
-
-% 2.误差评定，固定解平均值作为参考值
-dE=[];dN=[];dU=[];
-XYZ_ref=[0,0,0];
-enum=0;
-for i=1:size(B)
-    if status(i)==4
-        XYZ_ref(1)=XYZ_ref(1)*enum/(enum+1)+X(i)/(enum+1);
-        XYZ_ref(2)=XYZ_ref(2)*enum/(enum+1)+Y(i)/(enum+1);
-        XYZ_ref(3)=XYZ_ref(3)*enum/(enum+1)+Z(i)/(enum+1);
-        enum=enum+1;
-    end
-end
-fprintf("%13.4f %13.4f %13.4f\n",XYZ_ref(1),XYZ_ref(2),XYZ_ref(3));
-
-% 计算误差序列
-BLH_ref=XYZ2LLH_inMain(XYZ_ref(1),XYZ_ref(2),XYZ_ref(3));
-for i=1:size(B)
-    vxyz=[X(i)-XYZ_ref(1) Y(i)-XYZ_ref(2) Z(i)-XYZ_ref(3)];
-    venu=BL2ENU_inMain(BLH_ref(1),BLH_ref(2),vxyz);
-    dE=[dE;venu(1)];
-    dN=[dN;venu(2)];
-    dU=[dU;venu(3)];
-end
-
-% 3.结果选择输出：周内秒，X坐标，Y坐标，Z坐标
-for i=1:size(B)
-    XYZ = LLH2XYZ_inMain(B(i)*pi/180.0,L(i)*pi/180.0,H(i));
-    fprintf(fid_output,'%4d,%8.1f,%d,%14.3f,%14.3f,%14.3f\n',GPSweek(i),SecOfWeek(i),status(i),XYZ(1),XYZ(2),XYZ(3));
-    %fprintf(fid_output,'%4d %8.1f %18.10f %18.10f %14.3f
-    %%2d\n',GPSweek(i),SecOfWeek(i),B(i),L(i),H(i),status(i)); % 可通过rtkpost.exe转换成kml文件
-end
-
-fclose('all');
 
 %% 子函数
+% 处理单个文件
+function processSingleFile(InputFileName, year, month, day)
+    % 自动生成输出文件路径
+    [filepath, name, ~] = fileparts(InputFileName);
+    OutputFileName = fullfile(filepath, [name, '.txt']);
+    
+    % 打开文件
+    fid_input = fopen(InputFileName, 'rt');
+    if fid_input == -1
+        error('无法打开输入文件: %s', InputFileName);
+    end
+    
+    fid_output = fopen(OutputFileName, 'w');
+    if fid_output == -1
+        fclose(fid_input); % 先关闭已打开的输入文件
+        error('无法打开输出文件: %s', OutputFileName);
+    end
+    
+    % 1.读取NMEA格式中GGA字段信息并进行转换和储存
+    weeks=[]; secs=[];
+    posXs=[]; posYs=[]; posZs=[];
+    status=[]; satNums=[];
+    while ~feof(fid_input)
+        line = fgetl(fid_input);
+        answer = findstr(line,'GNGGA');
+        if (~isempty(answer)&&~isempty(line)&&(length(line)>36))
+           [~,line]=strtok(line,',');
+    
+           [strtempt,line]=strtok(line,',');%时间
+           hour=str2double(strtempt(1:2)); min=str2double(strtempt(3:4)); sec=str2double(strtempt(5:9));
+           [gt.week, gt.SecOfWeek]=YMDHMS2GPST_inMain(year,month,day,hour,min,sec);
+           weeks=[weeks;gt.week]; secs=[secs;gt.SecOfWeek+18];
+    
+           [strtempt,line]=strtok(line,',');%纬度
+           if size(strtempt)<=1
+               weeks(size(weeks,1))=[];
+               secs(size(secs,1))=[];
+               continue
+           end
+           if 0
+               Bdd=str2double(strtempt(1:3));
+               Bmm=str2double(strtempt(4:end));
+           else
+               Bdd=str2double(strtempt(1:2));
+               Bmm=str2double(strtempt(3:end));%和芯，ublox
+           end
+           B=Bdd+Bmm/60.0;
+           [~,line]=strtok(line,',');
+    
+           [strtempt,line]=strtok(line,',');%经度
+           Ldd=str2double(strtempt(1:3));Lmm=str2double(strtempt(4:end));
+           L=Ldd+Lmm/60.0;
+           [~,line]=strtok(line,',');
+    
+           [strtempt,line]=strtok(line,',');%解状态
+           status=[status;str2double(strtempt)];
+    
+           [strtempt,line]=strtok(line,',');%GPS卫星数
+           satNums=[satNums;str2double(strtempt)];
+    
+           [strtempt,line]=strtok(line,',');%HDOP
+           HDOP=str2double(strtempt);
+    
+           [strtempt,line]=strtok(line,',');%海拔高
+           altitude=str2double(strtempt);
+           [~,line]=strtok(line,',');
+           [strtempt,line]=strtok(line,',');%椭球高
+           H=altitude+str2double(strtempt);
+    
+           [XYZ] = LLH2XYZ_inMain(B*pi/180.0, L*pi/180.0, H);
+           posXs=[posXs; XYZ(1)];
+           posYs=[posYs; XYZ(2)];
+           posZs=[posZs; XYZ(3)];
+        end
+    end
+    
+    % 2.误差评定，固定解平均值作为参考值
+    XYZ_ref=[0,0,0];
+    enum=0;
+    for i=1:length(weeks)
+        if status(i)==4
+            XYZ_ref(1)=XYZ_ref(1)*enum/(enum+1)+posXs(i)/(enum+1);
+            XYZ_ref(2)=XYZ_ref(2)*enum/(enum+1)+posYs(i)/(enum+1);
+            XYZ_ref(3)=XYZ_ref(3)*enum/(enum+1)+posZs(i)/(enum+1);
+            enum=enum+1;
+        end
+    end
+    fprintf("%13.4f %13.4f %13.4f\n",XYZ_ref(1),XYZ_ref(2),XYZ_ref(3));
+    
+    % 计算误差序列
+    dE=[]; dN=[]; dU=[];
+    BLH_ref=XYZ2LLH_inMain(XYZ_ref(1),XYZ_ref(2),XYZ_ref(3));
+    for i=1:length(weeks)
+        vxyz=[posXs(i)-XYZ_ref(1) posYs(i)-XYZ_ref(2) posZs(i)-XYZ_ref(3)];
+        venu=BL2ENU_inMain(BLH_ref(1),BLH_ref(2),vxyz);
+        dE=[dE;venu(1)];
+        dN=[dN;venu(2)];
+        dU=[dU;venu(3)];
+    end
+    
+    % 3.结果选择输出：周内秒，X坐标，Y坐标，Z坐标
+    for i=1:length(weeks)
+        fprintf(fid_output,'%4d,%8.1f,%d,%14.3f,%14.3f,%14.3f\n',weeks(i),secs(i),status(i),posXs(i),posYs(i),posZs(i));
+        %fprintf(fid_output,'%4d %8.1f %18.10f %18.10f %14.3f
+        %%2d\n',GPSweek(i),SecOfWeek(i),B(i),L(i),H(i),status(i)); % 可通过rtkpost.exe转换成kml文件
+    end
+    
+    fclose('all');
+end
+
 % 年月日时分秒转换为GPS时，不考虑闰秒
 function [gpsWeek, sow] = YMDHMS2GPST_inMain(year,month,day,hour,min,sec)
     if(month <= 2)
