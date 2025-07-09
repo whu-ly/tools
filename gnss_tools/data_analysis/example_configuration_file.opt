@@ -1,0 +1,18 @@
+# CIPS Software Option Ctrl File, created: 2024/07/08 22:45: 0.0
+# note : 文件名中不能出现中文路径；配置项起始列有要求（第33列开始）；用空格替代TAB键
+
+
+# GNSS输入文件.
+GNSS_FilePath:                                                                 ; <文件路径>
+GNSS_BaseType:                  2 #(0=NMEA,1=RTCM,2=RENIX)                     ; <基准站数据类型>
+GNSS_RoveType:                  2                                              ; <流动站数据类型>
+GNSS_BaseFile:                  BASE_20250117_01_BSDVRS_01.25o                 ; <基准站文件名>
+GNSS_RoveFile:                  ROVE_20250117_03_TH1100_01.25o                 ; <流动站文件名>
+GNSS_NaviFile:                  ROVE_20250117_03_TH1100_01.25p                 ; <星历文件名>
+GNSS_RefFile:                                                                  ; <参考文件名>
+GNSS_RefPoss:                   -2790042.097,   4687802.107,   3293609.446     ; <参考坐标，静态数据适用>
+GNSS_DeviceType:                GDT_LowCost_TH1200                             ; <接收机类型，默认GDT_LowCostReceiver>
+GNSS_UserType:                  GNSSUSER_UGV                                   ; <载体类型，默认GNSSUSER_NONE>
+GNSS_bGNSSProcAll:              1                                              ; [1:ON,0:OFF] <是否全时段处理>
+GNSS_BeginTime:                 2321,442218.0                                  ; <GPSWeek,Secs, 数据处理起始时间>
+GNSS_EndTime:                   2321,445818.0                                  ; <GPSWeek,Secs, 数据处理结束时间>
