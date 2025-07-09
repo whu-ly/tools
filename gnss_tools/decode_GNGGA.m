@@ -1,49 +1,49 @@
-%% ½âÂë "GNGGA" Óï¾ä
+%% è§£ç  "GNGGA" è¯­å¥
 % 2025-07-02, Implement single file processing, edit by Lying
 % 2025-07-06, Implement batch processing of folders, edit by Lying
 
 clear;clc;
 
-% ²ÎÊýÅäÖÃ
+% å‚æ•°é…ç½®
 year = 2025; month = 05; day = 20;
-InputFileName = 'E:\01Prog\04CDTH\02Data\202410@CDTH@CropperGNSS@TH1100\20241202@TH1100@BSDVRS@UGV@Trees\res\POSRTKDLLV342_TH1100';  % ¿ÉÊÇÎÄ¼þÒ²¿ÉÒÔÊÇÎÄ¼þ¼Ð
+InputFileName = 'E:\01Prog\04CDTH\02Data\202410@CDTH@CropperGNSS@TH1100\20241202@TH1100@BSDVRS@UGV@Trees\res\POSRTKDLLV342_TH1100';  % å¯æ˜¯æ–‡ä»¶ä¹Ÿå¯ä»¥æ˜¯æ–‡ä»¶å¤¹
 
 if isfolder(InputFileName)
     fileList = dir(fullfile(InputFileName, '*'));
-    fileList = fileList(~[fileList.isdir]);  % È¥µôÎÄ¼þ¼Ð
+    fileList = fileList(~[fileList.isdir]);  % åŽ»æŽ‰æ–‡ä»¶å¤¹
     for k = 1:length(fileList)
         fullPath = fullfile(InputFileName, fileList(k).name);
-        fprintf('´¦ÀíÎÄ¼þ£º%s\n', fullPath);
+        fprintf('å¤„ç†æ–‡ä»¶ï¼š%s\n', fullPath);
         try
             processSingleFile(fullPath, year, month, day);
         catch ME
-            warning('´¦ÀíÎÄ¼þÊ§°Ü: %s\nÔ­Òò: %s', fullPath, ME.message);
+            warning('å¤„ç†æ–‡ä»¶å¤±è´¥: %s\nåŽŸå› : %s', fullPath, ME.message);
         end
     end
 else
     processSingleFile(InputFileName, year, month, day);
 end
 
-%% ×Óº¯Êý
-% ´¦Àíµ¥¸öÎÄ¼þ
+%% å­å‡½æ•°
+% å¤„ç†å•ä¸ªæ–‡ä»¶
 function processSingleFile(InputFileName, year, month, day)
-    % ×Ô¶¯Éú³ÉÊä³öÎÄ¼þÂ·¾¶
+    % è‡ªåŠ¨ç”Ÿæˆè¾“å‡ºæ–‡ä»¶è·¯å¾„
     [filepath, name, ~] = fileparts(InputFileName);
     OutputFileName = fullfile(filepath, [name, '.txt']);
     
-    % ´ò¿ªÎÄ¼þ
+    % æ‰“å¼€æ–‡ä»¶
     fid_input = fopen(InputFileName, 'rt');
     if fid_input == -1
-        error('ÎÞ·¨´ò¿ªÊäÈëÎÄ¼þ: %s', InputFileName);
+        error('æ— æ³•æ‰“å¼€è¾“å…¥æ–‡ä»¶: %s', InputFileName);
     end
     
     fid_output = fopen(OutputFileName, 'w');
     if fid_output == -1
-        fclose(fid_input); % ÏÈ¹Ø±ÕÒÑ´ò¿ªµÄÊäÈëÎÄ¼þ
-        error('ÎÞ·¨´ò¿ªÊä³öÎÄ¼þ: %s', OutputFileName);
+        fclose(fid_input); % å…ˆå…³é—­å·²æ‰“å¼€çš„è¾“å…¥æ–‡ä»¶
+        error('æ— æ³•æ‰“å¼€è¾“å‡ºæ–‡ä»¶: %s', OutputFileName);
     end
     
-    % 1.¶ÁÈ¡NMEA¸ñÊ½ÖÐGGA×Ö¶ÎÐÅÏ¢²¢½øÐÐ×ª»»ºÍ´¢´æ
+    % 1.è¯»å–NMEAæ ¼å¼ä¸­GGAå­—æ®µä¿¡æ¯å¹¶è¿›è¡Œè½¬æ¢å’Œå‚¨å­˜
     weeks=[]; secs=[];
     posXs=[]; posYs=[]; posZs=[];
     status=[]; satNums=[];
@@ -53,12 +53,12 @@ function processSingleFile(InputFileName, year, month, day)
         if (~isempty(answer)&&~isempty(line)&&(length(line)>36))
            [~,line]=strtok(line,',');
     
-           [strtempt,line]=strtok(line,',');%Ê±¼ä
+           [strtempt,line]=strtok(line,',');%æ—¶é—´
            hour=str2double(strtempt(1:2)); min=str2double(strtempt(3:4)); sec=str2double(strtempt(5:9));
            [gt.week, gt.SecOfWeek]=YMDHMS2GPST_inMain(year,month,day,hour,min,sec);
            weeks=[weeks;gt.week]; secs=[secs;gt.SecOfWeek+18];
     
-           [strtempt,line]=strtok(line,',');%Î³¶È
+           [strtempt,line]=strtok(line,',');%çº¬åº¦
            if size(strtempt)<=1
                weeks(size(weeks,1))=[];
                secs(size(secs,1))=[];
@@ -69,29 +69,29 @@ function processSingleFile(InputFileName, year, month, day)
                Bmm=str2double(strtempt(4:end));
            else
                Bdd=str2double(strtempt(1:2));
-               Bmm=str2double(strtempt(3:end));%ºÍÐ¾£¬ublox
+               Bmm=str2double(strtempt(3:end));%å’ŒèŠ¯ï¼Œublox
            end
            B=Bdd+Bmm/60.0;
            [~,line]=strtok(line,',');
     
-           [strtempt,line]=strtok(line,',');%¾­¶È
+           [strtempt,line]=strtok(line,',');%ç»åº¦
            Ldd=str2double(strtempt(1:3));Lmm=str2double(strtempt(4:end));
            L=Ldd+Lmm/60.0;
            [~,line]=strtok(line,',');
     
-           [strtempt,line]=strtok(line,',');%½â×´Ì¬
+           [strtempt,line]=strtok(line,',');%è§£çŠ¶æ€
            status=[status;str2double(strtempt)];
     
-           [strtempt,line]=strtok(line,',');%GPSÎÀÐÇÊý
+           [strtempt,line]=strtok(line,',');%GPSå«æ˜Ÿæ•°
            satNums=[satNums;str2double(strtempt)];
     
            [strtempt,line]=strtok(line,',');%HDOP
            HDOP=str2double(strtempt);
     
-           [strtempt,line]=strtok(line,',');%º£°Î¸ß
+           [strtempt,line]=strtok(line,',');%æµ·æ‹”é«˜
            altitude=str2double(strtempt);
            [~,line]=strtok(line,',');
-           [strtempt,line]=strtok(line,',');%ÍÖÇò¸ß
+           [strtempt,line]=strtok(line,',');%æ¤­çƒé«˜
            H=altitude+str2double(strtempt);
     
            [XYZ] = LLH2XYZ_inMain(B*pi/180.0, L*pi/180.0, H);
@@ -101,7 +101,7 @@ function processSingleFile(InputFileName, year, month, day)
         end
     end
     
-    % 2.Îó²îÆÀ¶¨£¬¹Ì¶¨½âÆ½¾ùÖµ×÷Îª²Î¿¼Öµ
+    % 2.è¯¯å·®è¯„å®šï¼Œå›ºå®šè§£å¹³å‡å€¼ä½œä¸ºå‚è€ƒå€¼
     XYZ_ref=[0,0,0];
     enum=0;
     for i=1:length(weeks)
@@ -114,7 +114,7 @@ function processSingleFile(InputFileName, year, month, day)
     end
     fprintf("%13.4f %13.4f %13.4f\n",XYZ_ref(1),XYZ_ref(2),XYZ_ref(3));
     
-    % ¼ÆËãÎó²îÐòÁÐ
+    % è®¡ç®—è¯¯å·®åºåˆ—
     dE=[]; dN=[]; dU=[];
     BLH_ref=XYZ2LLH_inMain(XYZ_ref(1),XYZ_ref(2),XYZ_ref(3));
     for i=1:length(weeks)
@@ -125,17 +125,17 @@ function processSingleFile(InputFileName, year, month, day)
         dU=[dU;venu(3)];
     end
     
-    % 3.½á¹ûÑ¡ÔñÊä³ö£ºÖÜÄÚÃë£¬X×ø±ê£¬Y×ø±ê£¬Z×ø±ê
+    % 3.ç»“æžœé€‰æ‹©è¾“å‡ºï¼šå‘¨å†…ç§’ï¼ŒXåæ ‡ï¼ŒYåæ ‡ï¼ŒZåæ ‡
     for i=1:length(weeks)
         fprintf(fid_output,'%4d,%8.1f,%d,%14.3f,%14.3f,%14.3f\n',weeks(i),secs(i),status(i),posXs(i),posYs(i),posZs(i));
         %fprintf(fid_output,'%4d %8.1f %18.10f %18.10f %14.3f
-        %%2d\n',GPSweek(i),SecOfWeek(i),B(i),L(i),H(i),status(i)); % ¿ÉÍ¨¹ýrtkpost.exe×ª»»³ÉkmlÎÄ¼þ
+        %%2d\n',GPSweek(i),SecOfWeek(i),B(i),L(i),H(i),status(i)); % å¯é€šè¿‡rtkpost.exeè½¬æ¢æˆkmlæ–‡ä»¶
     end
     
     fclose('all');
 end
 
-% ÄêÔÂÈÕÊ±·ÖÃë×ª»»ÎªGPSÊ±£¬²»¿¼ÂÇÈòÃë
+% å¹´æœˆæ—¥æ—¶åˆ†ç§’è½¬æ¢ä¸ºGPSæ—¶ï¼Œä¸è€ƒè™‘é—°ç§’
 function [gpsWeek, sow] = YMDHMS2GPST_inMain(year,month,day,hour,min,sec)
     if(month <= 2)
         year = year - 1;
@@ -152,7 +152,7 @@ function [gpsWeek, sow] = YMDHMS2GPST_inMain(year,month,day,hour,min,sec)
     sow = (days - 44244 - gpsWeek * 7) * 86400 + fracDay * 86400;
 end
 
-% XYZ×ªBLH
+% XYZè½¬BLH
 function [LLH] = XYZ2LLH_inMain(X,Y,Z)
     a = 6378137.0; %WGS84
     e = 0.0818191908425;
@@ -186,7 +186,7 @@ function [LLH] = XYZ2LLH_inMain(X,Y,Z)
     LLH(3) = sqrt(r2 + z * z) - v;
 end
 
-% BLH×ªXYZ
+% BLHè½¬XYZ
 function [X] = LLH2XYZ_inMain(B,L,H)
     gs_WGS84_FE = 1.0 / 298.257223563;
     gs_WGS84_a = 6378137.0;
@@ -203,7 +203,7 @@ function [X] = LLH2XYZ_inMain(B,L,H)
     X(3) = (v * (1.0 - gs_WGS84_e2) + H)*sinp;
 end
 
-% BL×ªENU
+% BLè½¬ENU
 function [venu] = BL2ENU_inMain(B,L,vxyz)
     R=zeros(3,3);
     sinp=sin(B); cosp=cos(B); sinl=sin(L); cosl=cos(L);
@@ -213,6 +213,3 @@ function [venu] = BL2ENU_inMain(B,L,vxyz)
     venu=R*vxyz';
     venu=venu';
 end
-
-
-
